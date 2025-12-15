@@ -1,0 +1,42 @@
+[package]
+name = "mcp-server"
+version = "0.1.0"
+edition = "2024"
+authors = ["Adrian Jastrzębski <business@quantdevlabs.com>"]
+description = "A minimal MCP (Model Context Protocol) server template with authentication and tool support"
+license = "MIT"
+
+[dependencies]
+# Web framework
+axum = "0.8"
+tokio = { version = "1.48", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6.8", features = ["cors"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+
+# Configuration and auth
+toml = "0.9"
+
+# Error handling
+anyhow = "1.0"
+
+[dev-dependencies]
+# HTTP testing
+axum-test = "18.4"
+
+# Property-based testing
+proptest = "1.5"
+
+# Temporary files for testing credential loading
+tempfile = "3.23"
+
+[profile.release]
+opt-level = 3
+lto = true
+debug = 0
+codegen-units = 1
+strip = "debuginfo"
