@@ -1,9 +1,5 @@
-mod common;
-
-use common::*;
-use mcp_server::tools::{initialize_all_tools, register_tool, validate_tool_args};
+use mcp_server::tools::{initialize_all_tools, validate_tool_args};
 use serde_json::json;
-use std::collections::HashMap;
 
 // ============================================================================
 // Type Validation Tests
@@ -732,70 +728,7 @@ fn test_arguments_array_not_object() {
 }
 
 // ============================================================================
-// register_tool Tests
-// ============================================================================
-
-#[test]
-fn test_register_tool_adds_to_registry() {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-    let tool = MockTool::new("test_tool", "A test tool");
-
-    register_tool(tool, &mut func_registry, &mut tool_definitions);
-
-    assert!(func_registry.contains_key("test_tool"));
-}
-
-#[test]
-fn test_register_tool_adds_to_definitions() {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-    let tool = MockTool::new("test_tool", "A test tool");
-
-    register_tool(tool, &mut func_registry, &mut tool_definitions);
-
-    assert_eq!(tool_definitions.len(), 1);
-    assert_eq!(tool_definitions[0].name, "test_tool");
-}
-
-#[test]
-fn test_register_tool_name_matches() {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-    let tool = MockTool::new("my_tool", "My test tool");
-
-    register_tool(tool, &mut func_registry, &mut tool_definitions);
-
-    assert_eq!(tool_definitions[0].name, "my_tool");
-    assert!(func_registry.contains_key("my_tool"));
-}
-
-#[test]
-fn test_register_tool_description_matches() {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-    let tool = MockTool::new("test_tool", "This is a test tool");
-
-    register_tool(tool, &mut func_registry, &mut tool_definitions);
-
-    assert_eq!(tool_definitions[0].description, "This is a test tool");
-}
-
-#[test]
-fn test_register_tool_schema_matches() {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-    let tool = MockTool::new("test_tool", "A test tool");
-
-    register_tool(tool, &mut func_registry, &mut tool_definitions);
-
-    let schema = &tool_definitions[0].parameters;
-    assert_eq!(schema["type"], "object");
-    assert!(schema["properties"]["test_param"].is_object());
-}
-
-// ============================================================================
-// initialize_all_tools Tests
+// initialize_all_tools Tests (Auto-Registration)
 // ============================================================================
 
 #[test]

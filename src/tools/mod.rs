@@ -6,6 +6,9 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 
+// Re-export the macro for convenience
+pub use mcp_server_macros::mcp_tool;
+
 pub mod get_time;
 
 pub type PinBoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
@@ -32,6 +35,19 @@ pub trait McpTool {
         user: AuthenticatedUser,
     ) -> PinBoxedFuture<Result<Value, Error>>;
 }
+
+/// Helper trait for tool registration (used by the #[mcp_tool] macro)
+pub trait ToolRegistration {
+    fn tool_instance() -> Box<dyn McpTool + Send + Sync>;
+}
+
+/// Entry in the inventory for tool collection
+pub struct ToolEntry {
+    pub constructor: fn() -> Box<dyn McpTool + Send + Sync>,
+}
+
+// Collect all tools annotated with #[mcp_tool]
+inventory::collect!(ToolEntry);
 
 /// Validate tool arguments against JSON Schema
 pub fn validate_tool_args(schema: &Value, args: &Option<Value>) -> Result<()> {
@@ -178,42 +194,51 @@ fn validate_value(name: &str, value: &Value, schema: &Value) -> Result<()> {
     Ok(())
 }
 
-/// Register a tool and add it to both the function registry and tool definitions
-pub fn register_tool<T: McpTool + Send + Sync + 'static>(
-    tool_instance: T,
+/// Initialize all tools and return registry and definitions
+/// Tools are automatically discovered via the inventory system
+pub fn initialize_all_tools() -> (HashMap<String, ToolFunction>, Vec<ToolDefinition>) {
+    let mut func_registry = HashMap::new();
+    let mut tool_definitions = Vec::new();
+    let mut seen_names = std::collections::HashSet::new();
+
+    // Auto-discover all tools annotated with #[mcp_tool]
+    for entry in inventory::iter::<ToolEntry> {
+        let tool = (entry.constructor)();
+        let name = tool.name();
+
+        // Check for duplicate tool names
+        if !seen_names.insert(name.to_string()) {
+            panic!(
+                "Duplicate tool name detected: '{}'. Each tool must have a unique name.",
+                name
+            );
+        }
+
+        register_tool_boxed(tool, &mut func_registry, &mut tool_definitions);
+    }
+
+    (func_registry, tool_definitions)
+}
+
+/// Register a boxed tool instance (used internally for auto-registration)
+fn register_tool_boxed(
+    tool: Box<dyn McpTool + Send + Sync>,
     func_reg: &mut HashMap<String, ToolFunction>,
     def_vec: &mut Vec<ToolDefinition>,
 ) {
-    let name = tool_instance.name().to_string();
+    let name = tool.name().to_string();
 
     // Add to definitions (for discover endpoint)
     def_vec.push(ToolDefinition {
         name: name.clone(),
-        description: tool_instance.description().to_string(),
-        parameters: tool_instance.parameters_schema(),
+        description: tool.description().to_string(),
+        parameters: tool.parameters_schema(),
     });
 
     // Add to function registry (for invoke endpoint)
-    let tool = std::sync::Arc::new(tool_instance);
+    let tool_arc: std::sync::Arc<dyn McpTool + Send + Sync> = std::sync::Arc::from(tool);
     let execution_closure =
-        move |args: Option<Value>, user: AuthenticatedUser| tool.execute(args, user);
+        move |args: Option<Value>, user: AuthenticatedUser| tool_arc.execute(args, user);
 
     func_reg.insert(name, Box::new(execution_closure));
-}
-
-/// Initialize all tools and return registry and definitions
-/// TODO: auto-discovered tools src/tools
-/// TODO: procedural macro (separate crate? mcp-server-macros)
-pub fn initialize_all_tools() -> (HashMap<String, ToolFunction>, Vec<ToolDefinition>) {
-    let mut func_registry = HashMap::new();
-    let mut tool_definitions = Vec::new();
-
-    // Register all tools here
-    register_tool(
-        get_time::GetTimeTool,
-        &mut func_registry,
-        &mut tool_definitions,
-    );
-
-    (func_registry, tool_definitions)
 }

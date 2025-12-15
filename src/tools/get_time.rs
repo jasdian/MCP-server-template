@@ -1,10 +1,11 @@
-use super::{McpTool, PinBoxedFuture, validate_tool_args};
+use super::{mcp_tool, McpTool, PinBoxedFuture, validate_tool_args};
 use crate::auth::AuthenticatedUser;
 use anyhow::{Error, Result};
 use chrono::Utc;
 use serde_json::{Value, json};
 
 /// Simple tool that returns the current server time
+#[mcp_tool]
 pub struct GetTimeTool;
 
 impl McpTool for GetTimeTool {

@@ -1,12 +1,20 @@
+[workspace]
+members = [".", "mcp-server-macros"]
+resolver = "2"
+
 [package]
 name = "mcp-server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Adrian Jastrzębski <business@quantdevlabs.com>"]
 description = "A minimal MCP (Model Context Protocol) server template with authentication and tool support"
 license = "MIT"
 
 [dependencies]
+# Tool registration
+inventory = "0.3"
+mcp-server-macros = { path = "./mcp-server-macros" }
+
 # Web framework
 axum = "0.8"
 tokio = { version = "1.48", features = ["full"] }

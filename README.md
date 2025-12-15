@@ -244,16 +244,19 @@ MCP Server uses JSON-RPC 2.0 error codes:
 
 ## Adding New Tools
 
+Tools are automatically registered using the `#[mcp_tool]` attribute macro. No manual registration needed!
+
 ### 1. Create a New Tool Module
 
 Create a new file in `src/tools/`, e.g., `src/tools/my_tool.rs`:
 
 ```rust
-use super::{validate_tool_args, McpTool, PinBoxedFuture};
+use super::{mcp_tool, validate_tool_args, McpTool, PinBoxedFuture};
 use crate::auth::AuthenticatedUser;
 use anyhow::{Error, Result};
 use serde_json::{json, Value};
 
+#[mcp_tool]  // <-- This attribute auto-registers the tool!
 pub struct MyTool;
 
 impl McpTool for MyTool {
@@ -285,9 +288,11 @@ impl McpTool for MyTool {
         args: Option<Value>,
         user: AuthenticatedUser,
     ) -> PinBoxedFuture<Result<Value, Error>> {
+        let schema = self.parameters_schema();
+
         Box::pin(async move {
             // Validate arguments
-            validate_tool_args(&self.parameters_schema(), &args)?;
+            validate_tool_args(&schema, &args)?;
 
             // Extract arguments
             let args_obj = args.unwrap();
@@ -307,21 +312,24 @@ impl McpTool for MyTool {
 }
 ```
 
-### 2. Register the Tool
+### 2. Register the Tool Module
 
-In `src/tools/mod.rs`:
+In `src/tools/mod.rs`, simply add the module declaration:
 
 ```rust
-// Add module declaration
 pub mod my_tool;
-
-// In initialize_all_tools() function, register your tool:
-register_tool(
-    my_tool::MyTool,
-    &mut func_registry,
-    &mut tool_definitions,
-);
 ```
+
+That's it! The `#[mcp_tool]` attribute automatically:
+- Validates the struct is public (compile-time check)
+- Generates the registration code
+- Submits the tool to the inventory for automatic discovery
+- Ensures no duplicate tool names at startup
+
+**Note:** Tool structs must be:
+- `pub` (public visibility required)
+- Unit structs (no generics allowed)
+- Implementing the `McpTool` trait
 
 ### 3. Test Your Tool
 
@@ -544,7 +552,7 @@ MIT License - see LICENSE file for details.
 
 - [ ] Add more example tools
 - [ ] WebSocket support for streaming responses
-- [ ] Unified src/tools auto-loader; potential macro development
+- [x] procedural macro crate `#[mcp_tool]`
 - [ ] Rate limiting middleware
 - [ ] Prometheus metrics
 - [ ] Docker Compose setup
